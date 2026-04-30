@@ -12,8 +12,12 @@ jobs:
     strategy:
       matrix:
         config: [Release]
+    
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Setup Visual Studio
+      uses: ilammy/msvc-dev-cmd@v1
     
     - name: Setup CMake
       uses: lukka/get-cmake@latest
@@ -25,4 +29,9 @@ jobs:
     - name: Build
       working-directory: src-cpp/build
       run: cmake --build . --config Release
-
+    
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: triga-editor
+        path: src-cpp/build/bin/
