@@ -14,24 +14,55 @@ jobs:
         config: [Release]
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
-    - name: Setup Visual Studio
+    - name: Setup Visual Studio Environment
       uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
     
-    - name: Setup CMake
+    - name: Get CMake
       uses: lukka/get-cmake@latest
-      
-    - name: Configure
-      working-directory: src-cpp
-      run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
     
-    - name: Build
+    - name: Create Build Directory
+      run: mkdir -p src-cpp/build
+      shell: bash
+    
+    - name: Configure with CMake
+      working-directory: src-cpp
+      run: |
+        cmake -S . -B build `
+          -G "Visual Studio 17 2022" `
+          -A x64 `
+          -DCMAKE_BUILD_TYPE=Release
+      shell: pwsh
+    
+    - name: Build Project
       working-directory: src-cpp/build
-      run: cmake --build . --config Release
+      run: cmake --build . --config Release --parallel 4
+      shell: pwsh
+    
+    - name: Verify Build Output
+      run: |
+        Write-Host "=== Build Artifacts ===" -ForegroundColor Green
+        $exeFiles = Get-ChildItem -Path "src-cpp/build" -Include "*.exe" -Recurse -ErrorAction SilentlyContinue
+        if ($exeFiles.Count -gt 0) {
+          Write-Host "✓ Found executable(s):" -ForegroundColor Green
+          foreach ($exe in $exeFiles) {
+            Write-Host "  $($exe.FullName)" -ForegroundColor Cyan
+            Write-Host "  Size: $('{0:N2}' -f ($exe.Length/1MB)) MB" -ForegroundColor Yellow
+          }
+        }
+      shell: pwsh
     
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
+      if: success()
       with:
-        name: triga-editor
-        path: src-cpp/build/bin/
+        name: triga-editor-exe
+        path: src-cpp/build/**/triga_editor.exe
+        if-no-files-found: warn
+        retention-days: 30
